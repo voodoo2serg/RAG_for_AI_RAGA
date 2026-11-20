@@ -216,3 +216,6 @@ def skill_markdown(pid: str, item_id: str):
 
 from .knowledge import router as knowledge_router
 app.include_router(knowledge_router)
+
+from .semantic import router as semantic_router
+app.include_router(semantic_router)
