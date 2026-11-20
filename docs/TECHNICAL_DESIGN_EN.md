@@ -31,7 +31,7 @@ These comparisons are documented in the original project's product-research note
 
 ## 3. Internal architecture of the public edition
 
-\`\`\`text
+```text
 Markdown / TXT / JSON / JSONL / CSV / LOG / ZIP
                  |
        API import + source retention
@@ -48,7 +48,7 @@ Markdown / TXT / JSON / JSONL / CSV / LOG / ZIP
     continuity Markdown / full JSON backup
                  |
        external agent or local model
-\`\`\`
+```
 
 **Runtime:** Python + FastAPI, SQLite, plain-language web interface, optional Ollama. Unlike the older multi-service architecture (Next.js, PostgreSQL/pgvector, Redis/Celery, object storage), this distribution deliberately uses a small local runtime. That older stack is an architectural predecessor, not the public edition's deployment requirement.
 
@@ -56,19 +56,19 @@ Markdown / TXT / JSON / JSONL / CSV / LOG / ZIP
 
 | File | Responsibility |
 | --- | --- |
-| \`backend/raga_community/api.py\` | Projects, sessions, manual CRUD, continuity Markdown, backup and restore |
-| \`backend/raga_community/knowledge.py\` | Text/ZIP import, chunking, BM25-style ranker, evidence retrieval, optional grounded local-model answer |
-| \`backend/raga_community/semantic.py\` | Ollama embedding requests, cosine similarity and optional hybrid ranking |
-| \`backend/raga_community/extract.py\` | Transparent keyword-based extraction into draft rules, tickets, decisions and skills |
-| \`backend/raga_community/webui.html\` | Simple personal interface |
-| \`backend/tests/\` | Unit and API tests, including mocked semantic retrieval |
-| \`docker-compose.yml\` | Local-only API with optional Ollama profile |
+| `backend/raga_community/api.py` | Projects, sessions, manual CRUD, continuity Markdown, backup and restore |
+| `backend/raga_community/knowledge.py` | Text/ZIP import, chunking, BM25-style ranker, evidence retrieval, optional grounded local-model answer |
+| `backend/raga_community/semantic.py` | Ollama embedding requests, cosine similarity and optional hybrid ranking |
+| `backend/raga_community/extract.py` | Transparent keyword-based extraction into draft rules, tickets, decisions and skills |
+| `backend/raga_community/webui.html` | Simple personal interface |
+| `backend/tests/` | Unit and API tests, including mocked semantic retrieval |
+| `docker-compose.yml` | Local-only API with optional Ollama profile |
 
-The database stores \`projects\`, \`sessions\` (original material), \`items\` (work objects), \`chunks\` (indexed passages) and optional \`chunk_vectors\`. Each chunk retains a \`session_id\`, a \`chunk_index\` and a source label.
+The database stores `projects`, `sessions` (original material), `items` (work objects), `chunks` (indexed passages) and optional `chunk_vectors`. Each chunk retains a `session_id`, a `chunk_index` and a source label.
 
 ## 4. Ingestion: what is processed?
 
-The public code accepts direct text sessions and UTF-8 \`.txt\`, \`.md\`, \`.json\`, \`.jsonl\`, \`.csv\`, \`.log\` files, plus ZIP archives containing supported text files. A JSON importer traverses nested objects to find string \`content\`, \`text\` and \`message\` values. Import is synchronous and limited in size. Original text remains recoverable.
+The public code accepts direct text sessions and UTF-8 `.txt`, `.md`, `.json`, `.jsonl`, `.csv`, `.log` files, plus ZIP archives containing supported text files. A JSON importer traverses nested objects to find string `content`, `text` and `message` values. Import is synchronous and limited in size. Original text remains recoverable.
 
 **Not shipped:** ready-made live connectors to specific chat providers, social services, remote coding agents or repositories; PDF/DOCX parsing; automatic event streaming; background queues. Any provider may integrate via the HTTP API if its export format is converted to accepted input.
 
@@ -78,7 +78,7 @@ The earlier architecture proposed two ingestion paths: *historical import* for e
 
 ### 5.1 Source chunking
 
-\`knowledge.py\` splits text on paragraphs, subdivides long passages and retains limited overlapping context. The default target is roughly **1,100 characters per chunk** with **150 characters of overlap**. These are **characters, not model tokens**; passage sizes may exceed targets around paragraph boundaries. The indexed unit has an ID and a pointer to its originating session.
+`knowledge.py` splits text on paragraphs, subdivides long passages and retains limited overlapping context. The default target is roughly **1,100 characters per chunk** with **150 characters of overlap**. These are **characters, not model tokens**; passage sizes may exceed targets around paragraph boundaries. The indexed unit has an ID and a pointer to its originating session.
 
 ### 5.2 Default lexical retrieval
 
@@ -86,9 +86,9 @@ A BM25-like score is calculated over source chunks using term frequency, documen
 
 ### 5.3 Optional semantic vectors
 
-An optional local Ollama embedding model (default example: \`nomic-embed-text\`) maps text into numerical vectors. The public implementation serializes those vectors to JSON in SQLite. At query time it embeds the question and computes **cosine similarity** to stored chunk vectors.
+An optional local Ollama embedding model (default example: `nomic-embed-text`) maps text into numerical vectors. The public implementation serializes those vectors to JSON in SQLite. At query time it embeds the question and computes **cosine similarity** to stored chunk vectors.
 
-The optional hybrid mode combines a nonnegative semantic score and normalized lexical score using **0.7 semantic + 0.3 lexical**. This simple blend is not calibrated for all corpora and has no ANN index; it is intended for relatively small personal datasets. Texts are not vectorized automatically on import: call the \`/vectorize\` API explicitly after enabling Ollama.
+The optional hybrid mode combines a nonnegative semantic score and normalized lexical score using **0.7 semantic + 0.3 lexical**. This simple blend is not calibrated for all corpora and has no ANN index; it is intended for relatively small personal datasets. Texts are not vectorized automatically on import: call the `/vectorize` API explicitly after enabling Ollama.
 
 **Boundary:** the private research extension **RAGA-64** is not included. This code uses ordinary embedding/cosine operations, not any proprietary optimization procedure.
 
@@ -98,13 +98,13 @@ It is helpful to distinguish three levels of disclosure.
 
 | Level | What the consumer needs | Present implementation |
 | --- | --- | --- |
-| **A · Working state** | Current rules, decisions, unfinished tickets and chosen skills | \`GET /api/projects/{id}/continuity\` returns concise Markdown from active project items; currently includes up to 50 titles per category |
-| **B · Supporting evidence** | The passages relevant to a specific question | \`POST /api/projects/{id}/retrieve\` or \`/semantic-search\` returns ranked source chunks with IDs and scores |
-| **C · Complete original** | Full text and project history when uncertainty or audit requires it | \`GET /api/projects/{id}/sessions/{session_id}\` and \`/backup\` preserve original conversation text and items |
+| **A · Working state** | Current rules, decisions, unfinished tickets and chosen skills | `GET /api/projects/{id}/continuity` returns concise Markdown from active project items; currently includes up to 50 titles per category |
+| **B · Supporting evidence** | The passages relevant to a specific question | `POST /api/projects/{id}/retrieve` or `/semantic-search` returns ranked source chunks with IDs and scores |
+| **C · Complete original** | Full text and project history when uncertainty or audit requires it | `GET /api/projects/{id}/sessions/{session_id}` and `/backup` preserve original conversation text and items |
 
 This is an **available manual progression**, not yet an automatic staged retrieval controller. An integrated agent can start with A, request B for a claim, and request C when it must verify the underlying record. Full backups include private conversation material and must be protected accordingly.
 
-For optional local-model generation, \`/ask\` provides at most the configured number of passages, each truncated to 1,400 characters in the constructed prompt. The model is instructed to cite numbered passages and acknowledge insufficient evidence. This reduces indiscriminate prompt loading; it does **not** guarantee a fixed token budget, factual correctness or full-source visibility within a single model answer.
+For optional local-model generation, `/ask` provides at most the configured number of passages, each truncated to 1,400 characters in the constructed prompt. The model is instructed to cite numbered passages and acknowledge insufficient evidence. This reduces indiscriminate prompt loading; it does **not** guarantee a fixed token budget, factual correctness or full-source visibility within a single model answer.
 
 ### Example
 
@@ -118,7 +118,7 @@ The full chat stays stored while only the rule or a few supporting passages ente
 
 ## 7. Knowledge governance and humanities workflows
 
-Unlike an opaque chat memory, RAGA makes a rule, task or skill a visible item. Users may **create, edit, change status and delete** these records. The extractor only suggests candidates based on keywords; a detected phrase is not an approved fact. Skills can be exported as \`SKILL.md\`-shaped Markdown, but there is not yet a full skill execution engine.
+Unlike an opaque chat memory, RAGA makes a rule, task or skill a visible item. Users may **create, edit, change status and delete** these records. The extractor only suggests candidates based on keywords; a detected phrase is not an approved fact. Skills can be exported as `SKILL.md`-shaped Markdown, but there is not yet a full skill execution engine.
 
 This human-review principle matters to editorial, archival, research and other humanities work: preserving source language, distinguishing claims from decisions, and correcting automated interpretations are often more important than fully automatic actions.
 
@@ -131,7 +131,7 @@ The original research considered Telegram/chat imports, GitHub source collection
 - **Input:** local files and HTTP API submission; external integrations are built by API clients.
 - **AI model:** optional local **Ollama** for answering and embeddings.
 - **Data:** SQLite files, JSON backup/restore, Markdown continuity/skill export.
-- **UI and development:** FastAPI OpenAPI \`/docs\`, a lightweight browser UI and Docker Compose.
+- **UI and development:** FastAPI OpenAPI `/docs`, a lightweight browser UI and Docker Compose.
 
 Provider neutrality means **portability of the stored context and interfaces**, not automatic feature parity across proprietary model APIs. No cloud provider is required for basic operation.
 
