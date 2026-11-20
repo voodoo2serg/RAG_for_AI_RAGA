@@ -219,3 +219,48 @@ app.include_router(knowledge_router)
 
 from .semantic import router as semantic_router
 app.include_router(semantic_router)
+
+
+@app.delete("/api/projects/{pid}/items/{item_id}", dependencies=[Depends(auth)])
+def delete_item(pid: str, item_id: str):
+    with db() as c:
+        require_project(c, pid)
+        deleted = c.execute("DELETE FROM items WHERE project_id=? AND id=?", (pid, item_id)).rowcount
+        if not deleted:
+            raise HTTPException(404, "Item not found")
+    return {"deleted": True}
+
+
+@app.delete("/api/projects/{pid}/sessions/{sid}", dependencies=[Depends(auth)])
+def delete_session(pid: str, sid: str):
+    from .knowledge import ensure_schema
+    from .semantic import ensure_vector_schema
+    with db() as c:
+        ensure_schema(c)
+        ensure_vector_schema(c)
+        require_project(c, pid)
+        if not c.execute("SELECT 1 FROM sessions WHERE id=? AND project_id=?", (sid, pid)).fetchone():
+            raise HTTPException(404, "Session not found")
+        c.execute("""DELETE FROM chunk_vectors WHERE chunk_id IN
+                     (SELECT id FROM chunks WHERE session_id=? AND project_id=?)""", (sid, pid))
+        c.execute("DELETE FROM chunks WHERE session_id=? AND project_id=?", (sid, pid))
+        c.execute("DELETE FROM items WHERE session_id=? AND project_id=?", (sid, pid))
+        c.execute("DELETE FROM sessions WHERE id=? AND project_id=?", (sid, pid))
+    return {"deleted": True}
+
+
+@app.delete("/api/projects/{pid}", dependencies=[Depends(auth)])
+def delete_project(pid: str):
+    from .knowledge import ensure_schema
+    from .semantic import ensure_vector_schema
+    with db() as c:
+        ensure_schema(c)
+        ensure_vector_schema(c)
+        require_project(c, pid)
+        c.execute("""DELETE FROM chunk_vectors WHERE chunk_id IN
+                     (SELECT id FROM chunks WHERE project_id=?)""", (pid,))
+        c.execute("DELETE FROM chunks WHERE project_id=?", (pid,))
+        c.execute("DELETE FROM items WHERE project_id=?", (pid,))
+        c.execute("DELETE FROM sessions WHERE project_id=?", (pid,))
+        c.execute("DELETE FROM projects WHERE id=?", (pid,))
+    return {"deleted": True}
