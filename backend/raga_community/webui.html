@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RAGA Community — Context Workspace</title>
+<style>
+*{box-sizing:border-box}body{font:16px/1.6 system-ui,sans-serif;max-width:900px;margin:0 auto;padding:36px 20px;background:#fbfaf7;color:#24262c}
+header{display:flex;align-items:center;gap:18px;margin-bottom:30px}header img{width:100px;height:auto}
+h1{font-size:2rem;margin:0}h2{font-size:1.2rem}p{color:#555}
+section{border-top:1px solid #ddd;padding:20px 0}label{display:block;margin:12px 0 5px;font-weight:600}
+input,textarea,select,button{width:100%;font:inherit;padding:10px;border:1px solid #aaa;border-radius:7px}
+button{background:#385187;color:white;border:0;cursor:pointer;margin-top:14px}
+pre{background:#eff0f1;padding:14px;white-space:pre-wrap;overflow-wrap:anywhere;min-height:50px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:600px){.row{grid-template-columns:1fr}}
+</style></head>
+<body><header><img src="/static/logo.png" alt="RAGA logo"><div><h1>RAGA Community</h1>Own your context. Move your memory between AI tools.</div></header>
+<section><h2>1 · Create or select a project</h2>
+<label for="name">Project name</label><input id="name" value="My AI project">
+<button id="create">Create project</button>
+<label for="project">Active project</label><select id="project"></select></section>
+<section><h2>2 · Import an AI chat or research notes</h2>
+<label for="content">Conversation text</label><textarea id="content" rows="9" placeholder="Paste exported chat text, a research note or a task list"></textarea>
+<button id="import">Import and extract tasks, rules, decisions and skills</button></section>
+<section><h2>3 · Review and take your context elsewhere</h2>
+<div class="row"><button id="items">View knowledge items</button><button id="continuity">Generate continuity package</button></div>
+<pre id="result" aria-live="polite">Create a project to begin.</pre>
+<p>Create and edit manual skills, rules, decisions and tickets in the <a href="/docs">interactive API documentation</a>.</p></section>
+<script>
+let apiKey='';
+const result=document.getElementById('result');
+function show(v){result.textContent=typeof v==='string'?v:JSON.stringify(v,null,2)}
+async function call(path,method='GET',payload){
+ const headers={'Content-Type':'application/json'};if(apiKey)headers['X-API-Key']=apiKey;
+ const response=await fetch(path,{method,headers,body:payload?JSON.stringify(payload):undefined});
+ if(response.status===401&&!apiKey){apiKey=prompt('Enter your RAGA_API_KEY')||'';return call(path,method,payload)}
+ if(!response.ok)throw Error(response.status+': '+await response.text());
+ return response.json();
+}
+function pid(){return document.getElementById('project').value}
+async function refresh(){try{
+ const projects=await call('/api/projects');const select=document.getElementById('project');
+ select.replaceChildren();
+ for(const p of projects){const opt=document.createElement('option');opt.value=p.id;opt.textContent=p.name;select.add(opt)}
+ if(!projects.length)show('Create your first project.');
+}catch(e){show(e.message)}}
+async function run(fn){try{show(await fn())}catch(e){show(e.message)}}
+document.getElementById('create').onclick=()=>run(async()=>{
+ const project=await call('/api/projects','POST',{name:document.getElementById('name').value});await refresh();return project
+});
+document.getElementById('import').onclick=()=>run(()=>call('/api/projects/'+pid()+'/sessions','POST',{content:document.getElementById('content').value,source:'manual'}));
+document.getElementById('items').onclick=()=>run(()=>call('/api/projects/'+pid()+'/items'));
+document.getElementById('continuity').onclick=()=>run(async()=>{const a=await call('/api/projects/'+pid()+'/continuity');return a.markdown});
+refresh();
+</script></body></html>
