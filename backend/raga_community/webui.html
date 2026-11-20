@@ -19,7 +19,12 @@ pre{background:#eff0f1;padding:14px;white-space:pre-wrap;overflow-wrap:anywhere;
 <section><h2>2 · Import an AI chat or research notes</h2>
 <label for="content">Conversation text</label><textarea id="content" rows="9" placeholder="Paste exported chat text, a research note or a task list"></textarea>
 <button id="import">Import and extract tasks, rules, decisions and skills</button></section>
-<section><h2>3 · Review and take your context elsewhere</h2>
+<section><h2>3 · Write a skill or task yourself</h2>
+<label for="kind">Knowledge type</label><select id="kind"><option value="skill">Skill</option><option value="rule">Rule</option><option value="ticket">Ticket</option><option value="decision">Decision</option><option value="note">Note</option></select>
+<label for="title">Title</label><input id="title" placeholder="Publication checklist">
+<label for="body">Instructions / details</label><textarea id="body" rows="4" placeholder="Write your own reusable procedure"></textarea>
+<button id="saveitem">Save manually</button></section>
+<section><h2>4 · Review and take your context elsewhere</h2>
 <div class="row"><button id="items">View knowledge items</button><button id="continuity">Generate continuity package</button></div>
 <pre id="result" aria-live="polite">Create a project to begin.</pre>
 <p>Create and edit manual skills, rules, decisions and tickets in the <a href="/docs">interactive API documentation</a>.</p></section>
@@ -46,6 +51,7 @@ document.getElementById('create').onclick=()=>run(async()=>{
  const project=await call('/api/projects','POST',{name:document.getElementById('name').value});await refresh();return project
 });
 document.getElementById('import').onclick=()=>run(()=>call('/api/projects/'+pid()+'/sessions','POST',{content:document.getElementById('content').value,source:'manual'}));
+document.getElementById('saveitem').onclick=()=>run(()=>call('/api/projects/'+pid()+'/items','POST',{type:document.getElementById('kind').value,title:document.getElementById('title').value,body:document.getElementById('body').value,status:'active'}));
 document.getElementById('items').onclick=()=>run(()=>call('/api/projects/'+pid()+'/items'));
 document.getElementById('continuity').onclick=()=>run(async()=>{const a=await call('/api/projects/'+pid()+'/continuity');return a.markdown});
 refresh();
