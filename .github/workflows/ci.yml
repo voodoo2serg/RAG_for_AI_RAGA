@@ -24,3 +24,43 @@ jobs:
             echo 'An excluded source path has been detected.'
             exit 1
           fi
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start local edition
+        run: docker compose up --build -d
+      - name: Wait for API health
+        run: |
+          for n in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8000/api/health; then exit 0; fi
+            sleep 2
+          done
+          docker compose logs
+          exit 1
+      - name: Exercise project import and source retrieval
+        run: |
+          python - <<'PY'
+          import json, urllib.request
+          BASE="http://127.0.0.1:8000"
+          def post(path,payload):
+              body=json.dumps(payload).encode()
+              req=urllib.request.Request(BASE+path, data=body, headers={"Content-Type":"application/json"})
+              with urllib.request.urlopen(req) as r:
+                  return json.load(r)
+          project=post("/api/projects",{"name":"CI verification"})
+          pid=project["id"]
+          session=post(f"/api/projects/{pid}/sessions",{
+              "content":"Rule: keep context portable. Decision: use local storage."})
+          assert session["session_id"]
+          found=post(f"/api/projects/{pid}/retrieve",{"query":"portable context"})
+          assert found["sources"],found
+          print("Docker smoke test passed; citations:",len(found["sources"]))
+          PY
+      - name: Show diagnostics on failure
+        if: failure()
+        run: docker compose logs --tail 150
+      - name: Stop
+        if: always()
+        run: docker compose down
