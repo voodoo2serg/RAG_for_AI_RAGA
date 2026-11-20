@@ -35,16 +35,17 @@ RAGA reduces dependence on individual AI service vendors. It does not bypass pro
 
 ## What Is Shipped
 
-The current repository contains a lightweight and independent **Community Core**.
+The current repository contains an independent **Community Core** with persistent conversation storage, source indexing and retrieval, manual knowledge management, recoverable projects, a web interface and optional local-model answers.
 
-1. Create projects and submit chat transcripts or notes.
-2. Detect possible tickets, rules, decisions and skills with transparent keyword heuristics.
-3. Create your own skills and rules, edit records and manage their status.
-4. Search your stored project items with simple lexical scoring.
-5. Export an active-context recovery package for a new model or collaborator.
-6. Keep data locally in SQLite without connecting any cloud model.
+1. Create projects and import text chats, JSON exports, Markdown notes and supported ZIP archives.
+2. Preserve original conversations and index overlapping source passages for retrieval.
+3. Search passages using BM25-style lexical ranking with source and session references.
+4. Detect possible tickets, rules, decisions and skills using transparent, reviewable heuristics.
+5. Create and edit skills, rules, tickets, notes and decisions manually through the API or simple local interface.
+6. Export active context, individual skills, or a complete project backup; restore the backup into a new empty project.
+7. Optionally generate grounded answers with a locally running Ollama model. The default search and knowledge-management features need no LLM credentials.
 
-The current extractor is **rule-based**, not semantically validated. Imported material requires human review. The public edition does not yet ship the full original application, production-grade multi-user authentication, embedded model chat, vector search or advanced agent orchestration.
+**Limitations:** Extraction is heuristic and requires human review. Source retrieval uses lexical BM25-style scoring, not embedding-based vector retrieval. Optional local-model answers are not independently fact-checked. This edition does not ship the full original application, multi-user authentication, advanced agent orchestration or proprietary text-evaluation modules.
 
 ### Architecture
 
@@ -90,7 +91,37 @@ curl -X POST http://localhost:8000/api/projects/PROJECT_ID/sessions \
   -d '{"source":"chat","content":"TODO: review the draft\nRule: check citations\nDecision: keep data local\nSkill: create a publication checklist"}'
 ~~~
 
-Explore the resulting items using the interactive docs. Edit skills and tasks using the PATCH endpoint and retrieve a continuity package via the continuity endpoint.
+Explore the resulting items in the **local web workspace at http://localhost:8000/** or using the interactive API docs. Edit skills and tasks using the PATCH endpoint and retrieve a continuity package through its endpoint.
+
+### Search the imported source
+
+~~~bash
+curl -X POST http://localhost:8000/api/projects/PROJECT_ID/retrieve \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"What did we decide about citations?","limit":5}'
+~~~
+
+The response contains ranked passages with source names, session IDs and chunk indices. Use these references to inspect the original material.
+
+### Import exported files or archives
+
+~~~bash
+curl -F 'file=@notes.md' http://localhost:8000/api/projects/PROJECT_ID/upload
+~~~
+
+Supported types: UTF-8 TXT, MD, JSON, JSONL, CSV, LOG and ZIP archives of supported text files (size and count limits apply). The imported original text is preserved alongside searchable passages.
+
+### Portable backup and restore
+
+~~~bash
+curl http://localhost:8000/api/projects/PROJECT_ID/backup -o project.json
+# Create a new, empty project first and use the new project ID.
+curl -X POST http://localhost:8000/api/projects/NEW_PROJECT_ID/restore \
+  -H 'Content-Type: application/json' \
+  --data-binary @project.json
+~~~
+
+This exports original session text, knowledge items and project metadata. Keep backup files private if conversations contain sensitive material.
 
 ## Deployment
 
@@ -119,6 +150,17 @@ uvicorn raga_community.api:app --host 127.0.0.1 --port 8000
 
 On Windows PowerShell, activate the environment using the Scripts/Activate.ps1 script under .venv.
 
+### Optional fully local LLM answers with Ollama
+
+The default edition runs without any model. For optional local answers from retrieved passages:
+
+~~~bash
+docker compose --profile local-llm up --build -d
+docker compose exec ollama ollama pull llama3.2
+~~~
+
+Then use the **Answer with local Ollama** control at http://localhost:8000/ or POST /api/projects/PROJECT_ID/ask with use_model=true and model=llama3.2. Model weights download on the first pull. The model runs locally when installed; its hardware requirements and generated output quality depend on your environment. Source passages are returned alongside answers.
+
 ### Security
 
 This edition is designed for **single-user localhost use**. There is no multi-user account system. The API can optionally require a shared key through the RAGA_API_KEY environment variable and X-API-Key request header. The Community Core **must not be exposed directly to the public internet** without an appropriate authenticated gateway, network controls and additional hardening. Public internet deployment is outside this initial release's supported security boundary.
@@ -138,11 +180,16 @@ RAGA uses FastAPI and exposes OpenAPI documentation at /docs.
 | PATCH /api/projects/{id}/items/{item_id} | Edit or change status |
 | GET /api/projects/{id}/search | Search text |
 | GET /api/projects/{id}/continuity | Export context as Markdown |
+| POST /api/projects/{id}/upload | Import supported documents and ZIP archives |
+| POST /api/projects/{id}/retrieve | Search indexed source passages with references |
+| POST /api/projects/{id}/ask | Retrieve passages and optionally answer via local Ollama |
+| POST /api/projects/{id}/reindex | Rebuild a project's lexical source index |
+| POST /api/projects/{id}/restore | Restore a full project backup into an empty project |
 | GET /api/projects/{id}/sessions/{session_id} | Retrieve original imported chat text |
 | GET /api/projects/{id}/backup | Export full project, chats and knowledge as JSON |
 | GET /api/projects/{id}/skills/{item_id}/markdown | Export a manually created skill as Markdown |
 
-**Extension roadmap, not shipped:** semantic retrieval, vector database adapters, provider-neutral AI integrations, richer transcript parsers, native skill-file exchange, graphical project views, team roles and agent integrations.
+**Extension roadmap, not shipped:** embedding vector search, model-provider adapters beyond local Ollama, richer transcript parsers, visual project dashboards, multi-user roles, approvals and cross-agent automation. The current RAG feature uses local text indexing and optional Ollama, not the original private RAG engine.
 
 ## Separate Research Modules
 
@@ -179,7 +226,7 @@ Source code is licensed under **GNU GPL version 2 only — GPL-2.0-only**. See [
 
 Для кого: вайбкодеры, разработчики, учёные, журналисты, редакторы, преподаватели, писатели и другие специалисты, работающие со сложными текстами и проектами.
 
-**Что уже реализовано:** создание проектов, импорт текстов переписок, простое извлечение задач, правил, решений и скиллов, ручное добавление и редактирование записей, текстовый поиск, экспорт рабочего контекста. Базовая версия не требует платного ИИ и запускается локально.
+**Что уже реализовано:** создание проектов, импорт переписок и файлов, сохранение оригинальных текстов, разбиение на поисковые фрагменты, ранжирование источников, извлечение задач, правил, решений и скиллов, ручное редактирование, резервное копирование и восстановление проектов. Дополнительно доступен ответ на вопрос через локальную Ollama на основе найденных фрагментов. Для базового режима платный ИИ не нужен.
 
 **Локальная установка:**
 
