@@ -176,3 +176,36 @@ def workspace():
 @app.get("/static/logo.png", include_in_schema=False)
 def logo():
     return FileResponse(Path(__file__).parent / "logo.png", media_type="image/png")
+
+
+@app.get("/api/projects/{pid}/sessions/{session_id}", dependencies=[Depends(auth)])
+def read_session(pid: str, session_id: str):
+    with db() as c:
+        require_project(c, pid)
+        row = c.execute("SELECT * FROM sessions WHERE id=? AND project_id=?", (session_id, pid)).fetchone()
+        if not row:
+            raise HTTPException(404, "Session not found")
+        return dict(row)
+
+@app.get("/api/projects/{pid}/backup", dependencies=[Depends(auth)])
+def backup(pid: str):
+    """Portable JSON backup of project and its entire session/knowledge content."""
+    with db() as c:
+        require_project(c, pid)
+        project = dict(c.execute("SELECT * FROM projects WHERE id=?", (pid,)).fetchone())
+        sessions = [dict(x) for x in c.execute("SELECT * FROM sessions WHERE project_id=?", (pid,))]
+        items = [dict(x) for x in c.execute("SELECT * FROM items WHERE project_id=?", (pid,))]
+        return {"format": "raga-community-backup-v1", "project": project,
+                "sessions": sessions, "items": items}
+
+@app.get("/api/projects/{pid}/skills/{item_id}/markdown", dependencies=[Depends(auth)])
+def skill_markdown(pid: str, item_id: str):
+    """Export a hand-authored skill as portable Markdown content."""
+    with db() as c:
+        require_project(c, pid)
+        row = c.execute("SELECT * FROM items WHERE id=? AND project_id=? AND type='skill'",
+                        (item_id, pid)).fetchone()
+        if not row:
+            raise HTTPException(404, "Skill not found")
+        return {"filename": "SKILL.md",
+                "markdown": "# " + row["title"] + "\n\n" + row["body"]}
