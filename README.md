@@ -23,6 +23,14 @@ RAGA is a local-first, self-hostable, open-source project memory workspace. Capt
 
 RAGA reduces dependence on individual AI service vendors. It does not bypass proprietary providers' export restrictions; import only content you can access and reuse.
 
+
+## Technical design and reference architecture
+
+Explore how RAGA separates durable memory from model context, preserves source provenance and supports progressive access to full transcripts:
+
+- **[Technical design — English](docs/TECHNICAL_DESIGN_EN.md)** — reference systems, internals, lexical/semantic/hybrid retrieval, data processing, context economy and current limitations.
+- **[Техническая концепция — русский](docs/TECHNICAL_DESIGN_RU.md)** — принципы минимального контекста, векторизация, источники, архитектура и дальнейшее развитие.
+
 ## Use Cases
 
 | Persona | What RAGA helps preserve |
