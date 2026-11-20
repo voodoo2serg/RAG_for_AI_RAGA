@@ -41,3 +41,19 @@ def test_text_upload(tmp_path, monkeypatch):
         assert uploaded.json()["count"] == 1
         assert client.post(f"/api/projects/{pid}/retrieve",
             json={"query":"publication archive"}).json()["sources"]
+
+
+def test_deletion_lifecycle(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "DB_PATH", tmp_path / "deletion.sqlite3")
+    api.startup()
+    with TestClient(api.app) as client:
+        pid = client.post("/api/projects", json={"name":"Temporary project"}).json()["id"]
+        sid = client.post(f"/api/projects/{pid}/sessions", json={
+            "content":"Rule: retain project history while relevant"}).json()["session_id"]
+        item = client.post(f"/api/projects/{pid}/items", json={
+            "type":"skill","title":"Manual skill","body":"Inspect context"}).json()["id"]
+        assert client.delete(f"/api/projects/{pid}/items/{item}").status_code == 200
+        assert client.delete(f"/api/projects/{pid}/sessions/{sid}").status_code == 200
+        assert not client.post(f"/api/projects/{pid}/retrieve", json={"query":"history"}).json()["sources"]
+        assert client.delete(f"/api/projects/{pid}").status_code == 200
+        assert client.get(f"/api/projects/{pid}/items").status_code == 404
