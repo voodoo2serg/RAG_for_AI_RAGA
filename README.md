@@ -74,7 +74,7 @@ cd RAG_for_AI_RAGA
 docker compose up --build -d
 ~~~
 
-Open the interactive API documentation at **http://localhost:8000/docs**, and check **http://localhost:8000/api/health**. All ports are bound to localhost in the supplied Compose file.
+Open the **local web workspace at http://localhost:8000/**, interactive API documentation at **http://localhost:8000/docs**, and health check at **http://localhost:8000/api/health**. All ports are bound to localhost in the supplied Compose file.
 
 Create a project:
 
@@ -138,6 +138,9 @@ RAGA uses FastAPI and exposes OpenAPI documentation at /docs.
 | PATCH /api/projects/{id}/items/{item_id} | Edit or change status |
 | GET /api/projects/{id}/search | Search text |
 | GET /api/projects/{id}/continuity | Export context as Markdown |
+| GET /api/projects/{id}/sessions/{session_id} | Retrieve original imported chat text |
+| GET /api/projects/{id}/backup | Export full project, chats and knowledge as JSON |
+| GET /api/projects/{id}/skills/{item_id}/markdown | Export a manually created skill as Markdown |
 
 **Extension roadmap, not shipped:** semantic retrieval, vector database adapters, provider-neutral AI integrations, richer transcript parsers, native skill-file exchange, graphical project views, team roles and agent integrations.
 
@@ -186,7 +189,7 @@ cd RAG_for_AI_RAGA
 docker compose up --build -d
 ~~~
 
-После запуска откройте **http://localhost:8000/docs**. Для версии Community Core пока предусмотрен API-интерфейс, а не полноценный графический кабинет. По умолчанию программа рассчитана на одного локального пользователя и не должна открываться в интернет без дополнительной защиты.
+После запуска откройте **http://localhost:8000/docs**. В Community Core предусмотрены простая локальная веб-страница на http://localhost:8000/ и API для расширенных операций; это пока не полноценный графический кабинет приватной версии. По умолчанию программа рассчитана на одного локального пользователя и не должна открываться в интернет без дополнительной защиты.
 
 Разработчик **voodoo2serg** также создал отдельную систему культурно-ценностного анализа текстов **«Картина мира»** и методы оптимизации векторизации контекста **RAGA-64**. Их код и регистрационные документы не входят в публичный репозиторий. Сведения о доступности можно запросить у разработчика.
 
