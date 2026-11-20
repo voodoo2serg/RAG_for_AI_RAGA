@@ -165,3 +165,14 @@ def continuity(pid: str):
     for kind,vals in groups.items():
         lines+=["## "+kind.title()+"s"]+["- "+x["title"] for x in vals[:50]]+[""]
     return {"project":project,"groups":groups,"markdown":"\n".join(lines)}
+
+
+from fastapi.responses import HTMLResponse, FileResponse
+
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+def workspace():
+    return (Path(__file__).parent / "webui.html").read_text(encoding="utf-8")
+
+@app.get("/static/logo.png", include_in_schema=False)
+def logo():
+    return FileResponse(Path(__file__).parent / "logo.png", media_type="image/png")
