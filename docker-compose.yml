@@ -4,10 +4,19 @@ services:
     environment:
       RAGA_DB_PATH: /data/raga.sqlite3
       RAGA_API_KEY: ${RAGA_API_KEY:-}
+      RAGA_OLLAMA_URL: http://ollama:11434
     volumes:
       - raga_data:/data
     ports:
       - "127.0.0.1:8000:8000"
     restart: unless-stopped
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["local-llm"]
+    volumes:
+      - ollama_models:/root/.ollama
+    ports:
+      - "127.0.0.1:11434:11434"
 volumes:
+  ollama_models:
   raga_data:
