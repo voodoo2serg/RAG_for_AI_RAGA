@@ -35,7 +35,7 @@ RAGA reduces dependence on individual AI service vendors. It does not bypass pro
 
 ## What Is Shipped
 
-The current repository contains an independent **Community Core** with persistent conversation storage, source indexing and retrieval, manual knowledge management, recoverable projects, a web interface and optional local-model answers.
+The current repository contains an independent **Community Core** with persistent conversation storage, source indexing, lexical and optional local vector/hybrid retrieval, manual knowledge management, recoverable projects, a web interface and optional local-model answers.
 
 1. Create projects and import text chats, JSON exports, Markdown notes and supported ZIP archives.
 2. Preserve original conversations and index overlapping source passages for retrieval.
@@ -45,7 +45,7 @@ The current repository contains an independent **Community Core** with persisten
 6. Export active context, individual skills, or a complete project backup; restore the backup into a new empty project.
 7. Optionally generate grounded answers with a locally running Ollama model. The default search and knowledge-management features need no LLM credentials.
 
-**Limitations:** Extraction is heuristic and requires human review. Source retrieval uses lexical BM25-style scoring, not embedding-based vector retrieval. Optional local-model answers are not independently fact-checked. This edition does not ship the full original application, multi-user authentication, advanced agent orchestration or proprietary text-evaluation modules.
+**Limitations:** Extraction is heuristic and requires human review. Source retrieval defaults to lexical BM25-style scoring; local embedding-based retrieval can be enabled explicitly, without proprietary vectorization techniques. Optional local-model answers are not independently fact-checked. This edition does not ship the full original application, multi-user authentication, advanced agent orchestration or proprietary text-evaluation modules.
 
 ### Architecture
 
@@ -161,6 +161,17 @@ docker compose exec ollama ollama pull llama3.2
 
 Then use the **Answer with local Ollama** control at http://localhost:8000/ or POST /api/projects/PROJECT_ID/ask with use_model=true and model=llama3.2. Model weights download on the first pull. The model runs locally when installed; its hardware requirements and generated output quality depend on your environment. Source passages are returned alongside answers.
 
+### Optional local semantic / hybrid retrieval
+
+This is a **standard open implementation of text embeddings and cosine similarity**; it does not include any proprietary RAGA-64 methods.
+
+~~~bash
+docker compose --profile local-llm up --build -d
+docker compose exec ollama ollama pull nomic-embed-text
+~~~
+
+After importing sources, run POST /api/projects/PROJECT_ID/vectorize with a JSON body specifying model=nomic-embed-text. Then query POST /api/projects/PROJECT_ID/semantic-search with query, model and hybrid=true. The API stores ordinary vectors in the local database and combines semantic scores with lexical relevance. This straightforward implementation is intended for small personal projects, not millions of vectors.
+
 ### Security
 
 This edition is designed for **single-user localhost use**. There is no multi-user account system. The API can optionally require a shared key through the RAGA_API_KEY environment variable and X-API-Key request header. The Community Core **must not be exposed directly to the public internet** without an appropriate authenticated gateway, network controls and additional hardening. Public internet deployment is outside this initial release's supported security boundary.
@@ -185,11 +196,13 @@ RAGA uses FastAPI and exposes OpenAPI documentation at /docs.
 | POST /api/projects/{id}/ask | Retrieve passages and optionally answer via local Ollama |
 | POST /api/projects/{id}/reindex | Rebuild a project's lexical source index |
 | POST /api/projects/{id}/restore | Restore a full project backup into an empty project |
+| POST /api/projects/{id}/vectorize | Create local embedding vectors |
+| POST /api/projects/{id}/semantic-search | Semantic or hybrid source retrieval |
 | GET /api/projects/{id}/sessions/{session_id} | Retrieve original imported chat text |
 | GET /api/projects/{id}/backup | Export full project, chats and knowledge as JSON |
 | GET /api/projects/{id}/skills/{item_id}/markdown | Export a manually created skill as Markdown |
 
-**Extension roadmap, not shipped:** embedding vector search, model-provider adapters beyond local Ollama, richer transcript parsers, visual project dashboards, multi-user roles, approvals and cross-agent automation. The current RAG feature uses local text indexing and optional Ollama, not the original private RAG engine.
+**Extension roadmap, not shipped:** scalable vector indexes, model-provider adapters beyond local Ollama, richer transcript parsers, visual project dashboards, multi-user roles, approvals and cross-agent automation. The current RAG feature uses local text indexing and optional Ollama, not the original private RAG engine.
 
 ## Separate Research Modules
 
@@ -226,7 +239,7 @@ Source code is licensed under **GNU GPL version 2 only — GPL-2.0-only**. See [
 
 Для кого: вайбкодеры, разработчики, учёные, журналисты, редакторы, преподаватели, писатели и другие специалисты, работающие со сложными текстами и проектами.
 
-**Что уже реализовано:** создание проектов, импорт переписок и файлов, сохранение оригинальных текстов, разбиение на поисковые фрагменты, ранжирование источников, извлечение задач, правил, решений и скиллов, ручное редактирование, резервное копирование и восстановление проектов. Дополнительно доступен ответ на вопрос через локальную Ollama на основе найденных фрагментов. Для базового режима платный ИИ не нужен.
+**Что уже реализовано:** создание проектов, импорт переписок и файлов, сохранение оригинальных текстов, разбиение на поисковые фрагменты, лексический поиск и опциональный семантический/гибридный поиск через локальные эмбеддинги, извлечение задач, правил, решений и скиллов, ручное редактирование, резервное копирование и восстановление проектов. Дополнительно доступен ответ на вопрос через локальную Ollama на основе найденных фрагментов. Для базового режима платный ИИ не нужен.
 
 **Локальная установка:**
 
