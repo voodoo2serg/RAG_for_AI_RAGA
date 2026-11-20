@@ -94,11 +94,14 @@ def create_project(payload: ProjectIn):
 @app.post("/api/projects/{pid}/sessions", dependencies=[Depends(auth)], status_code=201)
 def import_session(pid: str, payload: SessionIn):
     sid = str(uuid.uuid4())
+    from .knowledge import index_session, ensure_schema
     found = extract_knowledge(payload.content)
     with db() as c:
+        ensure_schema(c)
         require_project(c,pid)
         c.execute("INSERT INTO sessions VALUES (?,?,?,?,?)",
                   (sid,pid,payload.source,payload.content,now()))
+        index_session(c, pid, sid, payload.content)
         for kind,values in found.items():
             for val in values:
                 c.execute("INSERT INTO items VALUES (?,?,?,?,?,?,?,?)",
@@ -209,3 +212,7 @@ def skill_markdown(pid: str, item_id: str):
             raise HTTPException(404, "Skill not found")
         return {"filename": "SKILL.md",
                 "markdown": "# " + row["title"] + "\n\n" + row["body"]}
+
+
+from .knowledge import router as knowledge_router
+app.include_router(knowledge_router)
