@@ -1,0 +1,13 @@
+services:
+  raga:
+    build: ./backend
+    environment:
+      RAGA_DB_PATH: /data/raga.sqlite3
+      RAGA_API_KEY: ${RAGA_API_KEY:-}
+    volumes:
+      - raga_data:/data
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+volumes:
+  raga_data:
