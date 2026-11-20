@@ -35,6 +35,9 @@ pre{background:#eff0f1;padding:14px;white-space:pre-wrap;overflow-wrap:anywhere;
 </section>
 <section><h2>6 · Review and take your context elsewhere</h2>
 <div class="row"><button id="items">View knowledge items</button><button id="continuity">Generate continuity package</button><button id="backup">Download complete JSON backup</button></div>
+<label for="edit-kind">Existing knowledge items</label><select id="edit-kind"><option value="">All items</option><option value="skill">Skills</option><option value="rule">Rules</option><option value="ticket">Tickets</option><option value="decision">Decisions</option><option value="note">Notes</option></select>
+<button id="load-items">Load and edit items</button>
+<div id="item-list"></div>
 <pre id="result" aria-live="polite">Create a project to begin.</pre>
 <p>Create and edit manual skills, rules, decisions and tickets in the <a href="/docs">interactive API documentation</a>.</p></section>
 <script>
@@ -76,6 +79,24 @@ document.getElementById('backup').onclick=()=>run(async()=>{
  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='raga-project-backup.json';a.click();URL.revokeObjectURL(url);return 'Project backup downloaded.'
 });
 document.getElementById('items').onclick=()=>run(()=>call('/api/projects/'+pid()+'/items'));
+document.getElementById('load-items').onclick=()=>run(async()=>{
+ const kind=document.getElementById('edit-kind').value;
+ const items=await call('/api/projects/'+pid()+'/items'+(kind?'?type='+encodeURIComponent(kind):''));
+ const holder=document.getElementById('item-list');holder.replaceChildren();
+ for(const item of items){
+  const outer=document.createElement('section');
+  const title=document.createElement('input');title.value=item.title;title.setAttribute('aria-label','Item title');
+  const body=document.createElement('textarea');body.value=item.body;body.rows=3;body.setAttribute('aria-label','Item instructions');
+  const status=document.createElement('select');
+  for(const st of ['draft','active','done','archived']){const opt=document.createElement('option');opt.value=st;opt.textContent=st;status.add(opt)}
+  status.value=item.status;
+  const save=document.createElement('button');save.textContent='Save '+item.type;
+  save.onclick=()=>run(()=>call('/api/projects/'+pid()+'/items/'+item.id,'PATCH',{title:title.value,body:body.value,status:status.value}));
+  const badge=document.createElement('p');badge.textContent=item.type+' · '+item.id;
+  outer.append(badge,title,body,status,save);holder.appendChild(outer);
+ }
+ return items.length+' items loaded for editing';
+});
 document.getElementById('continuity').onclick=()=>run(async()=>{const a=await call('/api/projects/'+pid()+'/continuity');return a.markdown});
 refresh();
 </script></body></html>
