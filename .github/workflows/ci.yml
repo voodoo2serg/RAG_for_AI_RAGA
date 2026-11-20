@@ -1,0 +1,26 @@
+name: Community checks
+on:
+  push:
+  pull_request:
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: pip install -r backend/requirements.txt
+      - name: Unit tests
+        working-directory: backend
+        run: python -m pytest -q
+      - name: Import API
+        working-directory: backend
+        run: python -c "from raga_community.api import app; print(app.title)"
+      - name: Check excluded source paths
+        run: |
+          if git ls-files | grep -Ei 'rospatent|raga.?64|world[_-]?model|picture[_-]?world|signal' ; then
+            echo 'An excluded source path has been detected.'
+            exit 1
+          fi
